@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "API Specification",
+  "description": "Schema for api-spec.json — the SSoT endpoint specification for a service domain.",
+  "type": "object",
+  "required": ["service", "basePath", "endpoints"],
+  "properties": {
+    "service": {
+      "type": "string",
+      "description": "Service identifier (e.g., 'my-service-auth', 'my-service-contents')"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domain within the service (e.g., 'user', 'store', 'reservation')"
+    },
+    "basePath": {
+      "type": "string",
+      "description": "Base URL path prefix for all endpoints in this domain"
+    },
+    "roles": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Roles that access this domain (e.g., ['admin', 'partner', 'mobile'])"
+    },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Endpoint" }
+    }
+  },
+  "$defs": {
+    "Endpoint": {
+      "type": "object",
+      "required": ["id", "path", "method"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique endpoint identifier (e.g., 'USER_LIST', 'STORE_DETAIL')"
+        },
+        "path": {
+          "type": "string",
+          "description": "URL path relative to basePath (e.g., '/list', '/:key/detail')"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"],
+          "description": "HTTP method"
+        },
+        "summary": {
+          "type": "string",
+          "description": "One-line description of the endpoint's purpose"
+        },
+        "role": {
+          "type": "string",
+          "description": "Role restriction if applicable (e.g., 'admin', 'partner')"
+        },
+        "controller": {
+          "type": "string",
+          "description": "Backend controller class name"
+        },
+        "serviceMethod": {
+          "type": "string",
+          "description": "Backend service method signature"
+        },
+        "request": {
+          "$ref": "#/$defs/Request"
+        },
+        "response": {
+          "$ref": "#/$defs/Response"
+        },
+        "businessRules": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Business rules affecting this endpoint (prefix traps with a star)"
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "cause": { "type": "string" }
+            }
+          },
+          "description": "Known error responses"
+        },
+        "calledBy": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "GW endpoints that call this internal endpoint"
+        },
+        "deprecated": {
+          "type": "boolean",
+          "description": "Whether this endpoint is deprecated"
+        }
+      }
+    },
+    "Request": {
+      "type": "object",
+      "properties": {
+        "params": {
+          "type": "object",
+          "description": "Query parameters / path variables",
+          "additionalProperties": { "$ref": "#/$defs/FieldDef" }
+        },
+        "body": {
+          "type": "object",
+          "description": "Request body fields",
+          "additionalProperties": { "$ref": "#/$defs/FieldDef" }
+        },
+        "headers": {
+          "type": "object",
+          "description": "Required request headers",
+          "additionalProperties": { "$ref": "#/$defs/FieldDef" }
+        }
+      }
+    },
+    "Response": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "object",
+          "description": "Response body fields",
+          "additionalProperties": { "$ref": "#/$defs/ResponseFieldDef" }
+        }
+      }
+    },
+    "FieldDef": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string", "description": "Data type (string, int, boolean, object, array, etc.)" },
+        "required": { "type": "boolean" },
+        "default": { "description": "Default value if not provided" },
+        "description": { "type": "string" },
+        "enum": { "type": "array", "items": { "type": "string" }, "description": "Allowed values" }
+      }
+    },
+    "ResponseFieldDef": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "nullable": { "type": "boolean" },
+        "deprecated": { "type": "boolean" },
+        "fields": {
+          "type": "object",
+          "description": "Nested object fields",
+          "additionalProperties": { "$ref": "#/$defs/ResponseFieldDef" }
+        },
+        "itemFields": {
+          "type": "object",
+          "description": "Fields of array items",
+          "additionalProperties": { "$ref": "#/$defs/ResponseFieldDef" }
+        }
+      }
+    }
+  }
+}

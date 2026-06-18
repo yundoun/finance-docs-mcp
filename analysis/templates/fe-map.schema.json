@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Frontend Map",
+  "description": "Schema for fe-map.json — maps frontend code to API endpoints with field-level usage analysis.",
+  "type": "object",
+  "required": ["service", "domain"],
+  "properties": {
+    "service": {
+      "type": "string",
+      "description": "Service identifier"
+    },
+    "domain": {
+      "type": "string",
+      "description": "Domain within the service"
+    },
+    "fe_framework": {
+      "type": "string",
+      "description": "Frontend framework (e.g., 'react-redux-toolkit', 'react-redux-ducks', 'vue-vuex')"
+    },
+    "endpoints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FeEndpoint" },
+      "description": "Endpoint-centric structure (one item per API endpoint)"
+    },
+    "page_mapping": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/PageMapping" },
+      "description": "Page-centric structure (alternative to endpoints)"
+    },
+    "functional_groups": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/FunctionalGroup" },
+      "description": "Grouping by feature/functionality (alternative)"
+    }
+  },
+  "$defs": {
+    "FeEndpoint": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Matches api-spec.json endpoint id"
+        },
+        "path": {
+          "type": "string",
+          "description": "API path"
+        },
+        "method": {
+          "type": "string",
+          "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+        },
+        "fe_thunk": {
+          "type": "string",
+          "description": "Redux thunk / async action name that calls this endpoint"
+        },
+        "fe_function": {
+          "type": "string",
+          "description": "Alternative: direct API function name"
+        },
+        "_url_constant": {
+          "type": "string",
+          "description": "API URL constant name from constants file"
+        },
+        "fe_callers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Caller" },
+          "description": "Pages/components that invoke this endpoint"
+        },
+        "field_usage": {
+          "$ref": "#/$defs/FieldUsage",
+          "description": "Which response fields are actually used in the FE"
+        },
+        "ui_components": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "UI component names that render data from this endpoint"
+        },
+        "_auto_classified": {
+          "type": "string",
+          "description": "Reason for auto-classification (set by mark-dead-apis.mjs)"
+        }
+      }
+    },
+    "Caller": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "string",
+          "description": "Relative path from FE_ROOT to the caller file"
+        },
+        "component_type": {
+          "type": "string",
+          "enum": ["functional", "class"],
+          "description": "React component type"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": ["useEffect", "event handler", "dispatch", "component logic"],
+          "description": "How the API call is triggered"
+        }
+      }
+    },
+    "FieldUsage": {
+      "type": "object",
+      "properties": {
+        "used": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Response fields actively used in FE code, or marker strings (_NO_FE_USAGE, _DELETE_OPERATION, etc.)"
+        },
+        "unused": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Response fields present in api-spec but not used in FE"
+        },
+        "transformed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": { "type": "string" },
+              "transform": { "type": "string" }
+            }
+          },
+          "description": "Fields that undergo data transformation before display"
+        }
+      }
+    },
+    "PageMapping": {
+      "type": "object",
+      "properties": {
+        "page": { "type": "string" },
+        "route": { "type": "string" },
+        "component": { "type": "string" },
+        "endpoints": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Endpoint IDs or thunk names used by this page"
+        },
+        "key_endpoints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "fe_callers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Caller" }
+        }
+      }
+    },
+    "FunctionalGroup": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "endpoints": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+---
+title: "User Management Domain"
+description: "Hub page for the User Management domain covering authentication, profiles, and permissions"
+category: domain-hub
+domain: user-management
+tags: [auth, users, permissions, profiles]
+related: [example/sample-api, example/flow-analysis, example/traps]
+updated: "2026-06-17"
+---
+
+## Domain Overview
+
+The User Management domain handles user lifecycle operations: registration, authentication, profile management, and role-based access control.
+
+## Architecture
+
+```
+Client App
+  │
+  ├── POST /api/users/register     → user-svc
+  ├── POST /api/auth/login          → auth-svc → token-svc
+  ├── GET  /api/users/:id           → user-svc
+  ├── PUT  /api/users/:id/profile   → user-svc → storage-svc
+  └── GET  /api/users/:id/roles     → auth-svc → permission-svc
+```
+
+## Endpoint Summary
+
+| Method | Path | Service | Pattern |
+|--------|------|---------|---------|
+| POST | `/api/users/register` | user-svc | direct |
+| POST | `/api/auth/login` | auth-svc | fan-out |
+| POST | `/api/auth/refresh` | auth-svc | direct |
+| GET | `/api/users/:id` | user-svc | direct |
+| PUT | `/api/users/:id/profile` | user-svc | fan-out |
+| DELETE | `/api/users/:id` | user-svc | saga |
+| GET | `/api/users/:id/roles` | auth-svc | proxy |
+
+## Key Concepts
+
+- **JWT Authentication**: Access tokens (15min) + refresh tokens (7d) stored in httpOnly cookies
+- **Role hierarchy**: superadmin > admin > editor > viewer
+- **Soft delete**: Users are never physically deleted; `deletedAt` timestamp is set
+
+## Analysis Documents
+
+- [Sample API Analysis](./sample-api) -- Detailed endpoint documentation
+- [Flow Analysis](./flow-analysis) -- Business flow sequences
+- [Traps & Gotchas](./traps) -- Common pitfalls and edge cases
+
+## Related Domains
+
+This domain interacts with:
+- **Notification domain** -- Welcome emails, password reset
+- **Audit domain** -- Login history, permission changes
+- **Billing domain** -- Account tier determines feature access

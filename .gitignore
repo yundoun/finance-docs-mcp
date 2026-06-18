@@ -1,0 +1,4 @@
+node_modules/
+data/search-index.json
+.env
+dist/

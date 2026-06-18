@@ -1,0 +1,85 @@
+---
+title: "User Management Traps"
+description: "Common pitfalls and gotchas when working with the User Management domain"
+category: traps
+domain: user-management
+tags: [traps, gotcha, auth, security, edge-cases]
+related: [example/index, example/flow-analysis, example/sample-api]
+updated: "2026-06-17"
+---
+
+> Domain: user-management (7 EP)
+> Risk level: High (authentication, token management)
+
+---
+
+## T01: Refresh Token Rotation Creates Race Conditions
+
+**Scenario**: Two concurrent requests use the same refresh token. The first request rotates the token successfully. The second request finds a revoked token and triggers compromise detection, invalidating ALL tokens for that user.
+
+**Impact**: User is logged out of all devices unexpectedly.
+
+**Mitigation**: Implement a grace period (e.g., 10 seconds) where the old refresh token is still accepted after rotation. Use a `rotatedAt` timestamp instead of immediate revocation.
+
+---
+
+## T02: Password Validation Differs Between Registration and Login
+
+**Registration**: Enforces complexity rules (8+ chars, upper + lower + digit + special).
+**Login**: No validation on password format -- just compares the bcrypt hash.
+
+If password rules are tightened, existing users with weaker passwords can still log in. There is no forced password migration. A "password strength" check on login that warns (but does not block) is recommended.
+
+---
+
+## T03: Email Uniqueness Check Has a TOCTOU Gap
+
+**Flow**:
+1. Check if email exists (SELECT)
+2. Insert new user (INSERT)
+
+Between steps 1 and 2, another request can register the same email. The database unique constraint catches this, but the error message returned is a generic 500 instead of a friendly 409 Conflict.
+
+**Fix**: Catch the unique constraint violation at the database level and map it to a 409 response. Do not rely solely on the pre-check.
+
+---
+
+## T04: Soft-Deleted Users Block Email Reuse
+
+When a user is soft-deleted (`deletedAt` is set), their email remains in the `users` table. A new user trying to register with the same email gets a "duplicate email" error even though the original account appears deleted.
+
+**Workaround**: The unique constraint should be a partial index excluding soft-deleted records:
+```sql
+CREATE UNIQUE INDEX idx_users_email_active
+ON users (email)
+WHERE deleted_at IS NULL;
+```
+
+---
+
+## T05: JWT Clock Skew Between Services
+
+Access tokens are verified by multiple services. If server clocks are not synchronized (NTP), a token issued by auth-svc might be rejected by user-svc because the `iat` (issued at) claim appears to be in the future.
+
+**Mitigation**: Configure a 30-second clock skew tolerance in all JWT verification middleware:
+```js
+jwt.verify(token, secret, { clockTolerance: 30 });
+```
+
+---
+
+## T06: Rate Limiter Does Not Account for Distributed Deployment
+
+The registration endpoint rate limit (5 req/min per IP) uses in-memory storage. In a multi-instance deployment, each instance has its own counter, effectively multiplying the allowed rate by the number of instances.
+
+**Fix**: Use a shared Redis-backed rate limiter (e.g., `rate-limiter-flexible` with Redis store).
+
+---
+
+## T07: Audit Log Writes Can Silently Fail
+
+Login and registration flows send audit events via fire-and-forget. If the audit service is down, events are lost with no retry mechanism.
+
+**Impact**: Compliance gaps in login history.
+
+**Mitigation**: Use a message queue (e.g., SQS, RabbitMQ) instead of direct HTTP calls for audit events. The queue provides durability and retry semantics.

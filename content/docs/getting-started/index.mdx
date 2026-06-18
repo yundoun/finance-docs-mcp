@@ -1,0 +1,93 @@
+---
+title: "Getting Started"
+description: "How to set up and use this docs-mcp instance for your project"
+category: onboarding
+tags: [setup, quickstart, mcp]
+updated: "2026-06-17"
+---
+
+## Overview
+
+This docs-mcp instance indexes your MDX documentation and makes it searchable via MCP tools.
+An AI assistant connected to this MCP server can search, retrieve, and reason about your documentation.
+
+## Prerequisites
+
+- Node.js 20+
+- An OpenAI API key (for the RAG chatbot feature)
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set:
+
+```
+OPENAI_API_KEY=sk-...        # Required for chatbot
+DOCS_ROOT=./content/docs      # Path to your MDX documents
+```
+
+### 3. Build the search index
+
+```bash
+npm run reindex
+```
+
+This reads all MDX files under `DOCS_ROOT`, extracts frontmatter and content, and builds a BM25 search index at `data/search-index.json`.
+
+### 4. Start the MCP server
+
+```bash
+npm run start
+```
+
+The server exposes four MCP tools:
+
+| Tool | Description |
+|------|-------------|
+| `search_docs` | BM25 keyword search with metadata filters |
+| `get_document` | Retrieve a single document by path |
+| `list_categories` | List all categories and document counts |
+| `find_related` | Find documents related to a given document |
+
+## Connecting to Claude Code
+
+Add this to your project's `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "my-docs": {
+      "command": "node",
+      "args": ["path/to/docs-mcp/dist/server.js"],
+      "env": {
+        "DOCS_ROOT": "./content/docs"
+      }
+    }
+  }
+}
+```
+
+## Writing Documents
+
+All documents live under `content/docs/` as MDX files. Each file must have YAML frontmatter with at least `title`, `description`, and `category`. See the [frontmatter schema](/conventions/frontmatter-schema) for the full specification.
+
+## Reindexing
+
+After adding or modifying documents, rebuild the index:
+
+```bash
+npm run reindex
+```
+
+The index is a build artifact (`data/search-index.json`) and should not be committed to version control.

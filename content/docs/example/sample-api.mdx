@@ -1,0 +1,106 @@
+---
+title: "User Registration API"
+description: "POST /api/users/register endpoint analysis with request/response schemas and validation rules"
+category: endpoint
+domain: user-management
+tags: [api, example, registration, users]
+related: [example/index, example/flow-analysis]
+updated: "2026-06-17"
+---
+
+## Endpoint
+
+```
+POST /api/users/register
+```
+
+**Auth**: Public (no token required)
+**Rate limit**: 5 requests per minute per IP
+**Service**: user-svc
+
+## Request
+
+### Headers
+
+| Header | Required | Description |
+|--------|----------|-------------|
+| Content-Type | Yes | `application/json` |
+| X-Request-ID | No | Idempotency key for duplicate prevention |
+
+### Body
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securePassword123!",
+  "name": "Jane Doe",
+  "phone": "+1-555-0100",
+  "agreeTerms": true,
+  "marketingOptIn": false
+}
+```
+
+### Field Validation
+
+| Field | Type | Required | Rules |
+|-------|------|----------|-------|
+| email | string | Yes | Valid email, max 255 chars, unique |
+| password | string | Yes | Min 8 chars, 1 upper + 1 lower + 1 digit + 1 special |
+| name | string | Yes | 2-100 chars, no special characters except `-` and `'` |
+| phone | string | No | E.164 format |
+| agreeTerms | boolean | Yes | Must be `true` |
+| marketingOptIn | boolean | No | Defaults to `false` |
+
+## Response
+
+### 201 Created
+
+```json
+{
+  "id": "usr_abc123",
+  "email": "user@example.com",
+  "name": "Jane Doe",
+  "role": "viewer",
+  "createdAt": "2026-06-17T09:00:00Z"
+}
+```
+
+### 409 Conflict
+
+```json
+{
+  "error": "DUPLICATE_EMAIL",
+  "message": "An account with this email already exists"
+}
+```
+
+### 422 Unprocessable Entity
+
+```json
+{
+  "error": "VALIDATION_ERROR",
+  "details": [
+    { "field": "password", "rule": "minLength", "message": "Password must be at least 8 characters" }
+  ]
+}
+```
+
+## Internal Flow
+
+```
+Gateway
+  │
+  ├─1. Validate request body (Joi schema)
+  ├─2. Check duplicate email → user-svc.findByEmail()
+  ├─3. Hash password → bcrypt(12 rounds)
+  ├─4. Create user record → user-svc.create()
+  ├─5. Assign default role → auth-svc.assignRole("viewer")
+  └─6. Send welcome email → notification-svc.send()
+       (async, fire-and-forget)
+```
+
+## Notes
+
+- The `X-Request-ID` header enables idempotent registration. If a request with the same ID arrives within 5 minutes, the server returns the previously created user instead of creating a duplicate.
+- Password is hashed with bcrypt (12 rounds) before storage. The plain text password never leaves the gateway process.
+- Welcome email is sent asynchronously. Registration succeeds even if email delivery fails.

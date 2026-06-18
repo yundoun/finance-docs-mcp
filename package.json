@@ -1,0 +1,24 @@
+{
+  "name": "docs-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Generic MCP server for searching MDX documentation. BM25 + metadata filter based.",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
+    "reindex": "tsx src/indexer/build-index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "gray-matter": "^4.0.3",
+    "openai": "^6.34.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

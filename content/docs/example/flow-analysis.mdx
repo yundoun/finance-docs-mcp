@@ -1,0 +1,114 @@
+---
+title: "User Management Flows"
+description: "Business flow analysis for user registration, login, and profile update sequences"
+category: flow
+domain: user-management
+tags: [flow, auth, registration, login, business-logic]
+related: [example/index, example/sample-api, example/traps]
+updated: "2026-06-17"
+---
+
+> Endpoints: 7
+> Patterns: direct 4 / fan-out 2 / saga 1
+
+---
+
+## 1. Registration Flow
+
+```
+Client
+  |
+  +--1. POST /api/users/register
+  |     +-- Validate input (Joi schema)
+  |     +-- Check duplicate email
+  |     +-- Hash password (bcrypt 12 rounds)
+  |     +-- Insert user record (role: viewer)
+  |     +-- fan-out:
+  |         +-- notification-svc: send welcome email (async)
+  |         +-- audit-svc: log registration event (async)
+  |
+  +--2. Response: 201 { id, email, name, role }
+```
+
+**Critical path**: Steps 1-4 are synchronous. Email and audit are fire-and-forget.
+
+---
+
+## 2. Login Flow
+
+```
+Client
+  |
+  +--1. POST /api/auth/login { email, password }
+  |     +-- Find user by email
+  |     +-- Verify password (bcrypt.compare)
+  |     +-- Check account status (active/suspended/deleted)
+  |     +-- Generate tokens:
+  |         +-- accessToken: JWT, 15min TTL
+  |         +-- refreshToken: opaque, 7d TTL, stored in DB
+  |     +-- Set refreshToken in httpOnly cookie
+  |     +-- fan-out:
+  |         +-- audit-svc: log login event
+  |         +-- session-svc: update last-active timestamp
+  |
+  +--2. Response: 200 { accessToken, user: { id, name, role } }
+```
+
+**Error cases**:
+- Invalid email -> 401 `INVALID_CREDENTIALS` (no hint about which field is wrong)
+- Invalid password -> 401 `INVALID_CREDENTIALS`
+- Account suspended -> 403 `ACCOUNT_SUSPENDED`
+- Account deleted -> 401 `INVALID_CREDENTIALS` (treated as non-existent)
+
+---
+
+## 3. Token Refresh Flow
+
+```
+Client
+  |
+  +--1. POST /api/auth/refresh
+  |     +-- Extract refreshToken from httpOnly cookie
+  |     +-- Lookup token in DB
+  |     +-- Verify not expired, not revoked
+  |     +-- Generate new accessToken (15min)
+  |     +-- Rotate refreshToken (new token, invalidate old)
+  |     +-- Update cookie with new refreshToken
+  |
+  +--2. Response: 200 { accessToken }
+```
+
+**Token rotation**: Each refresh issues a new refresh token and invalidates the old one. If a revoked token is reused, all tokens for that user are invalidated (compromise detection).
+
+---
+
+## 4. Account Deletion Flow (Saga)
+
+```
+Client
+  |
+  +--1. DELETE /api/users/:id
+  |     +-- Verify authorization (self or admin)
+  |     +-- Begin saga:
+  |         +-- Step 1: Revoke all tokens (auth-svc)
+  |         +-- Step 2: Cancel active subscriptions (billing-svc)
+  |         +-- Step 3: Set user.deletedAt timestamp (user-svc)
+  |         +-- Step 4: Schedule data purge in 30 days (cleanup-svc)
+  |     +-- Compensations on failure:
+  |         +-- Step 3 fails: restore tokens, restore subscriptions
+  |         +-- Step 2 fails: restore tokens
+  |
+  +--2. Response: 204 No Content
+```
+
+**Soft delete**: The user record is never physically removed. A background job purges data 30 days after `deletedAt` is set, unless the user reactivates their account.
+
+---
+
+## Cross-Domain Dependencies
+
+| This domain calls | Called by |
+|-------------------|-----------|
+| notification-svc (welcome email, password reset) | billing-svc (tier check on login) |
+| audit-svc (login/registration events) | admin-svc (user lookups) |
+| session-svc (last-active tracking) | -- |
