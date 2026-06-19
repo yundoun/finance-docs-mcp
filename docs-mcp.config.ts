@@ -11,7 +11,7 @@ const config: DocsMcpConfig = {
 
   name: "finance-docs-mcp",
 
-  docsRoot: "./content/docs",
+  docsRoot: "../finance-docs/content/docs",
 
   // ── Site ──
 
