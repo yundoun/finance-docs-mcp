@@ -1,6 +1,6 @@
-# docs-mcp
+# finance-docs-mcp
 
-MCP server + RAG chatbot that makes your MDX documentation searchable by AI assistants. Built on BM25 + metadata filtering.
+AI-searchable finance & investment knowledge base. MCP server + RAG chatbot for financial literacy education, built on BM25 + metadata filtering. Korean + English bilingual.
 
 ## What This Does
 

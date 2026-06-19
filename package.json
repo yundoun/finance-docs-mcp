@@ -1,9 +1,9 @@
 {
-  "name": "docs-mcp",
+  "name": "finance-docs-mcp",
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "description": "Generic MCP server for searching MDX documentation. BM25 + metadata filter based.",
+  "description": "AI-searchable finance & investment knowledge base — MCP server + RAG chatbot for financial literacy education.",
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",

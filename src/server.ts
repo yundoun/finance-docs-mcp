@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * docs-mcp — Generic MCP server for searching MDX documentation.
+ * finance-docs-mcp — MCP server for searching financial education documentation.
  * Supports two transports:
  *   - stdio  (default, for local Claude Code)
  *   - HTTP   (--http flag or PORT env, for remote access)

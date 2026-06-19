@@ -1,6 +1,6 @@
-# docs-mcp
+# finance-docs-mcp
 
-MCP server + search engine + RAG chatbot for MDX documentation. BM25 + metadata filter based.
+AI-searchable finance & investment knowledge base — MCP server + RAG chatbot for financial literacy education. BM25 + metadata filter based. Korean + English bilingual.
 
 ## Repo Scope
 
