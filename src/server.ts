@@ -88,6 +88,7 @@ async function main() {
         const query = url.searchParams.get("q") ?? "";
         const category = url.searchParams.get("category") ?? undefined;
         const platform = url.searchParams.get("platform") ?? undefined;
+        const locale = url.searchParams.get("locale") ?? undefined;
         const limit = Number(url.searchParams.get("limit")) || config.search.defaultLimit;
 
         if (!query) {
@@ -96,7 +97,7 @@ async function main() {
           return;
         }
 
-        const results = searcher.search(query, { category, platform, limit });
+        const results = searcher.search(query, { category, platform, locale, limit });
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify(results));
         return;

@@ -17,10 +17,11 @@ export function registerTools(server: McpServer, searcher: Searcher) {
       query: z.string().describe("Search query (natural language)"),
       category: z.string().optional().describe(`Category filter: ${allCategories}`),
       platform: z.string().optional().describe("Platform filter"),
+      locale: z.string().optional().describe("Language filter: ko, en (omit for all languages)"),
       limit: z.number().optional().describe("Max results to return (default 10)"),
     },
-    async ({ query, category, platform, limit }) => {
-      const results = searcher.search(query, { category, platform, limit });
+    async ({ query, category, platform, locale, limit }) => {
+      const results = searcher.search(query, { category, platform, locale, limit });
 
       if (results.length === 0) {
         return {

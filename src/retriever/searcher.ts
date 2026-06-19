@@ -17,12 +17,14 @@ export interface SearchResult {
   category: string;
   platform: string[];
   domain?: string;
+  locale: string;
 }
 
 export interface SearchOptions {
   category?: string;
   platform?: string;
   domain?: string;
+  locale?: string;
   limit?: number;
 }
 
@@ -141,9 +143,15 @@ export class Searcher {
     const category = options.category ?? route.category;
     const platform = options.platform ?? route.platform;
     const domain = options.domain ?? route.domain;
+    const locale = options.locale;
 
     // 2. Metadata filtering
     let candidates = this.index.chunks;
+
+    // Locale filter is never relaxed — it's an explicit user choice
+    if (locale) {
+      candidates = candidates.filter((c) => c.locale === locale);
+    }
 
     if (category) {
       candidates = candidates.filter((c) => c.category === category);
@@ -155,10 +163,11 @@ export class Searcher {
       candidates = candidates.filter((c) => c.domain === domain);
     }
 
-    // Progressively relax filters if no candidates found
+    // Progressively relax filters if no candidates found (except locale)
     if (candidates.length === 0 && (category || platform || domain)) {
-      // Drop domain filter first
-      candidates = this.index.chunks;
+      candidates = locale
+        ? this.index.chunks.filter((c) => c.locale === locale)
+        : this.index.chunks;
       if (category) {
         candidates = candidates.filter((c) => c.category === category);
       }
@@ -167,7 +176,9 @@ export class Searcher {
       }
     }
     if (candidates.length === 0) {
-      candidates = this.index.chunks;
+      candidates = locale
+        ? this.index.chunks.filter((c) => c.locale === locale)
+        : this.index.chunks;
     }
 
     // 3. BM25 scoring
@@ -190,6 +201,7 @@ export class Searcher {
         category: chunk.category,
         platform: chunk.platform,
         domain: chunk.domain,
+        locale: chunk.locale,
       });
     }
 

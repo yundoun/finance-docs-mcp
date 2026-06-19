@@ -5,7 +5,7 @@ import matter from "gray-matter";
 // ── Types ──
 
 export interface DocMeta {
-  path: string; // relative to docs root, e.g. "guides/getting-started.mdx"
+  path: string; // relative to docs root, e.g. "ko/basics/stocks.mdx"
   title: string;
   description: string;
   category: string;
@@ -14,6 +14,8 @@ export interface DocMeta {
   related: string[];
   summary?: string;
   updated: string;
+  /** Locale detected from directory path (e.g. "ko", "en") */
+  locale: string;
   /** Full MDX content (for get_document without filesystem access in production) */
   fullContent?: string;
 }
@@ -29,6 +31,8 @@ export interface Chunk {
   platform: string[];
   tags: string[];
   domain?: string;
+  /** Locale inherited from parent document */
+  locale: string;
 }
 
 // ── Helpers ──
@@ -82,19 +86,44 @@ function stripMdx(text: string): string {
     .trim();
 }
 
-/** Extract domain from docPath (first subdirectory under a known prefix) */
+/** Known locale codes — first path segment matching these is treated as locale */
+const KNOWN_LOCALES = new Set(["ko", "en", "ja", "zh"]);
+
+/**
+ * Detect locale from docPath.
+ * "ko/basics/stocks.mdx" → "ko"
+ * "basics/stocks.mdx" → undefined (no locale prefix)
+ */
+function detectLocale(docPath: string): string | undefined {
+  const first = docPath.split("/")[0];
+  return KNOWN_LOCALES.has(first) ? first : undefined;
+}
+
+/**
+ * Get the content path (locale prefix stripped) for domain extraction and breadcrumbs.
+ * "ko/basics/stocks.mdx" → "basics/stocks.mdx"
+ * "basics/stocks.mdx" → "basics/stocks.mdx"
+ */
+function stripLocalePrefix(docPath: string): string {
+  const locale = detectLocale(docPath);
+  if (!locale) return docPath;
+  return docPath.slice(locale.length + 1); // +1 for "/"
+}
+
+/** Extract domain from docPath (first segment after locale prefix) */
 function extractDomain(docPath: string): string | undefined {
-  // Generic: use first path segment as domain if there are 2+ segments
-  const parts = docPath.split("/");
+  const contentPath = stripLocalePrefix(docPath);
+  const parts = contentPath.split("/");
   if (parts.length >= 3) {
     return parts[0];
   }
   return undefined;
 }
 
-/** Generate breadcrumb from docPath */
+/** Generate breadcrumb from docPath (locale prefix excluded) */
 function makeBreadcrumb(docPath: string, sectionTitle?: string): string {
-  const parts = docPath
+  const contentPath = stripLocalePrefix(docPath);
+  const parts = contentPath
     .replace(/\.mdx$/, "")
     .split("/")
     .filter((p) => p !== "index");
@@ -167,6 +196,8 @@ export function chunkFile(filePath: string, docsRoot: string): ChunkResult {
       ? [fm.platform]
       : [];
 
+  const locale = detectLocale(docPath) ?? "en";
+
   const doc: DocMeta = {
     path: docPath,
     title: (fm.title as string) ?? path.basename(filePath, ".mdx"),
@@ -177,6 +208,7 @@ export function chunkFile(filePath: string, docsRoot: string): ChunkResult {
     related: Array.isArray(fm.related) ? (fm.related as string[]) : [],
     summary: fm.summary as string | undefined,
     updated: (fm.updated as string) ?? "",
+    locale,
     fullContent: raw,
   };
 
@@ -218,6 +250,7 @@ export function chunkFile(filePath: string, docsRoot: string): ChunkResult {
         category,
         platform,
         tags: doc.tags,
+        locale,
         ...(domain && { domain }),
       });
     }
@@ -236,6 +269,7 @@ export function chunkFile(filePath: string, docsRoot: string): ChunkResult {
       category,
       platform,
       tags: doc.tags,
+      locale,
       ...(domain && { domain }),
     });
   }
